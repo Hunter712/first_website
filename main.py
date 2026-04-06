@@ -4,4 +4,4 @@ app = FastAPI(docs_url=None, redoc_url=None)
 
 @app.get("/")
 def home():
-    return {"hello1"}
+    return {"hello12"}
