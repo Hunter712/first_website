@@ -13,17 +13,10 @@ BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    client_ip = request.client.host
-    detector(request, client_ip)
 
-    geo_url = f"http://ip-api.com/json/{client_ip}?lang=en"
 
     async with httpx.AsyncClient() as client:
-        geo_response = await client.get(geo_url)
-        if geo_response.status_code == 200:
-            geo_data = geo_response.json()
-            if geo_data.get("status") == "success":
-                city = geo_data.get("city")
+        city = await detector(request, client)
 
         params = {
             "q": city,
@@ -67,7 +60,16 @@ async def get_weather(request: Request, city: str):
 
         return templates.TemplateResponse(request, "index.html", {"weather": weather_data})
 
-def detector(request, client_ip):
+async def detector(request, client):
+    client_ip = request.client.host
+    geo_url = f"http://ip-api.com/json/{client_ip}?lang=en"
+    geo_response = await client.get(geo_url)
+
+    if geo_response.status_code == 200:
+        geo_data = geo_response.json()
+        if geo_data.get("status") == "success":
+            city = geo_data.get("city")
+
     user_agent_row = request.headers.get("user-agent", "Unknown")
     user_agent = parse(user_agent_row)
 
@@ -76,6 +78,8 @@ def detector(request, client_ip):
     browser_info = user_agent.browser.family
     device_model = user_agent.device.family
 
-    log_entry = f"[{timestamp}] IP: {client_ip} | Device:{device_model} | OS: {os_info} | Browser: {browser_info}\n"
+    log_entry = f"[{timestamp}] IP: {client_ip} | City: {city} | Device:{device_model} | OS: {os_info} | Browser: {browser_info}\n"
     with open("visit.log", "a", encoding="utf-8") as f:
         f.write(log_entry)
+
+    return city
