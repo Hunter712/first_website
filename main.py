@@ -1,8 +1,64 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+import httpx
 
 app = FastAPI(docs_url=None, redoc_url=None)
+templates = Jinja2Templates(directory="templates")
 
-@app.get("/")
-def home():
-    print("pc")
-    return {"message": "Hello World"}
+API_KEY = "5b6e0bb107a74c7b8f805ff871c996c9"
+BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    client_ip = request.client.host
+    geo_url = f"http://ip-api.com/json/{client_ip}?lang=en"
+
+    async with httpx.AsyncClient() as client:
+        geo_response = await client.get(geo_url)
+        if geo_response.status_code == 200:
+            geo_data = geo_response.json()
+            if geo_data.get("status") == "success":
+                city = geo_data.get("city")
+
+        params = {
+            "q": city,
+            "appid": API_KEY,
+            "units": "metric",
+            "lang": "en"
+        }
+        response = await client.get(BASE_URL, params=params)
+        weather_data = None
+        if response.status_code == 200:
+            data = response.json()
+            weather_data = {
+                "city": data["name"],
+                "temp": round(data["main"]["temp"]),
+                "desc": data["weather"][0]["description"].capitalize()
+            }
+
+    return templates.TemplateResponse(request, "index.html", {"weather": weather_data})
+
+@app.get("/get_weather", response_class=HTMLResponse)
+async def get_weather(request: Request, city: str):
+    params = {
+        "q": city,
+        "appid": API_KEY,
+        "units": "metric",
+        "lang": "en"
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(BASE_URL, params=params)
+        if response.status_code != 200:
+            error_msg = "You are trying to find some shit, can't find it"
+            return templates.TemplateResponse(request, "index.html", {"error": error_msg})
+
+        data = response.json()
+        weather_data = {
+            "city": data["name"],
+            "temp": round(data["main"]["temp"]),
+            "desc": data["weather"][0]["description"].capitalize()
+        }
+
+        return templates.TemplateResponse(request, "index.html", {"weather": weather_data})

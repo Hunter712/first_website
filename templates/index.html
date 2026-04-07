@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Weather</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5" style="max-width: 400px;">
+
+    <form action="/get_weather" method="get" class="input-group mb-3">
+        <input type="text" name="city" class="form-control" placeholder="City" required>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+
+    {% if weather %}
+    <div class="card card-body text-center shadow-sm">
+        <h4>{{ weather.city }}</h4>
+        <h2 class="mb-0">{{ weather.temp }}°C</h2>
+        <small class="text-muted">{{ weather.desc }}</small>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-danger mt-3">{{ error }}</div>
+    {% endif %}
+
+</body>
+</html>
