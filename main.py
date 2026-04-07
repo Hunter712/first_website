@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 import httpx
+import datetime
+from user_agents import parse
 
 app = FastAPI(docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory="templates")
@@ -12,6 +14,8 @@ BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     client_ip = request.client.host
+    detector(request, client_ip)
+
     geo_url = f"http://ip-api.com/json/{client_ip}?lang=en"
 
     async with httpx.AsyncClient() as client:
@@ -62,3 +66,16 @@ async def get_weather(request: Request, city: str):
         }
 
         return templates.TemplateResponse(request, "index.html", {"weather": weather_data})
+
+def detector(request, client_ip):
+    user_agent_row = request.headers.get("user-agent", "Unknown")
+    user_agent = parse(user_agent_row)
+
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    os_info = user_agent.os.family
+    browser_info = user_agent.browser.family
+    device_model = user_agent.device.family
+
+    log_entry = f"[{timestamp}] IP: {client_ip} | Device:{device_model} | OS: {os_info} | Browser: {browser_info}\n"
+    with open("visit.log", "a", encoding="utf-8") as f:
+        f.write(log_entry)
